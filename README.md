@@ -25,7 +25,7 @@
 - **课程代码**：`160527C051.01`、`202420251001273`、`CS101`、`MATH202` 等。
 - **周次**：`(1~9周)`、`(10-17周)`、`(6周)`、`(第1~10,12周)`、`(9，11，12，13周)`、`(1~5,7~8周)`。
 - **节次**：`(1-2节)`、`(4-5节)`、`(8节)`、`(第1-2节)`。
-- **教师**：`崔立杰(2022592116)`、`丁英宏(1611)`、`迪拉热·海米提(2023591201)`。
+- **教师**：`张三(20230001)`、`李四(20230002)`、`王五(20230003)`。
 
 > Word 课表没有统一标准。若某些自由排版/无课程代码的表格无法识别，可针对该文件的格式补充解析规则。
 
@@ -113,7 +113,7 @@ build/app/outputs/flutter-apk/app-release.apk
 ```powershell
 $env:FLUTTER_STORAGE_BASE_URL = "https://storage.flutter-io.cn"
 $env:PUB_HOSTED_URL = "https://pub.flutter-io.cn"
-$env:GRADLE_USER_HOME = "D:\GradleHome"
+$env:GRADLE_USER_HOME = "<你的Gradle缓存目录>"
 
 flutter build apk --release
 ```
@@ -127,7 +127,7 @@ flutter build apk --release
 如果迁移过 Flutter/Gradle/用户缓存目录，可能出现权限问题。请以管理员身份运行：
 
 ```powershell
-cd D:\TRAE\CODE\Kebiao\kebiao_app
+cd <你的项目目录>
 powershell -ExecutionPolicy Bypass -File .\tool\fix_migration_permissions.ps1
 ```
 
