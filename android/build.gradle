@@ -1,0 +1,31 @@
+allprojects {
+    repositories {
+        maven { url = uri("https://maven.aliyun.com/repository/google") }
+        maven { url = uri("https://maven.aliyun.com/repository/central") }
+        maven { url = uri("https://maven.aliyun.com/repository/public") }
+        google()
+        mavenCentral()
+    }
+}
+
+def newBuildDir = rootProject.layout.buildDirectory.dir("../../build").get()
+rootProject.layout.buildDirectory.set(newBuildDir)
+
+subprojects {
+    // 仅当子项目源码与主构建目录位于同一磁盘时才重定向 buildDir。
+    // Flutter 插件源码位于 C 盘 Pub 缓存，而本项目在 D 盘；
+    // 跨盘的 projectDir/buildDir 会导致 Kotlin Gradle 插件
+    // 在创建任务时对路径做 relativize 抛出 "different roots" 异常（Windows 限制）。
+    if (project.projectDir.toPath().root == newBuildDir.asFile.toPath().root) {
+        def newSubprojectBuildDir = newBuildDir.dir(project.name)
+        project.layout.buildDirectory.set(newSubprojectBuildDir)
+    }
+}
+
+subprojects {
+    project.evaluationDependsOn(":app")
+}
+
+tasks.register("clean") {
+    delete(rootProject.layout.buildDirectory)
+}
