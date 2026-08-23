@@ -3,6 +3,7 @@ import 'course.dart';
 /// 教务系统原始课程数据标准化后的模型。
 class JwCourse {
   final String id;
+  final String courseCode;
   final String name;
   final String teacher;
   final String classroom;
@@ -15,6 +16,7 @@ class JwCourse {
 
   const JwCourse({
     required this.id,
+    this.courseCode = '',
     required this.name,
     required this.teacher,
     required this.classroom,
@@ -30,7 +32,7 @@ class JwCourse {
   Course toCourse() {
     return Course(
       name: name,
-      code: id,
+      code: courseCode.isNotEmpty ? courseCode : id,
       teacher: teacher,
       loc: classroom,
       day: dayOfWeek - 1,

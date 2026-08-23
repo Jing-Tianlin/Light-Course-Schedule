@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../config/jw_config.dart';
-import '../services/jw_api_service.dart';
+import '../services/jw_web_import_service.dart';
 import '../utils/app_theme.dart';
 import 'jw_import_preview_screen.dart';
 
 /// 融合门户 WebView 导入页。
 ///
 /// 流程：
-/// 1. 打开 CAS 统一登录页，用户手动输入账号/密码/验证码；
-/// 2. 登录后进入融合门户，再手动点开教务系统课表页面；
-/// 3. 点击「一键导入」，App 自动从页面识别学号、读取 EAMS Cookie 并抓取课表。
+/// 1. 以电脑端 UA 打开 CAS 统一登录页；
+/// 2. 用户登录后进入融合门户并打开教务系统课表页面；
+/// 3. 点击「一键导入」，通过 [JwWebImportService] 复用页面会话抓取课表。
 class JwWebImportScreen extends StatefulWidget {
   const JwWebImportScreen({super.key});
 
@@ -20,140 +21,179 @@ class JwWebImportScreen extends StatefulWidget {
 }
 
 class _JwWebImportScreenState extends State<JwWebImportScreen> {
-  late final WebViewController _controller;
+  InAppWebViewController? _webViewController;
+  JwWebImportService? _service;
+
   bool _importing = false;
-  String? _studentId;
+  bool _isLoading = true;
+  int _loadProgress = 0;
+  String? _lastError;
 
   @override
-  void initState() {
-    super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (_) {
-            _fitViewport();
-            _autoExtractStudentId();
-          },
-          onWebResourceError: (error) {
-            debugPrint('WebView error: ${error.description}');
-              _reloadAfterCacheClear();
-          },
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('融合门户导入'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          TextButton(
+            onPressed: _isLoading || _service == null
+                ? null
+                : () async {
+                    await _service!.fitViewport();
+                    _showMessage('已尝试适配屏幕');
+                  },
+            child: const Text(
+              '适应屏幕',
+              style: TextStyle(color: AppTheme.brand, fontSize: 13),
+            ),
+          ),
+          TextButton(
+            onPressed: _importing || _isLoading ? null : _importFromWebView,
+            child: _importing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppTheme.brand,
+                    ),
+                  )
+                : const Text(
+                    '一键导入',
+                    style: TextStyle(color: AppTheme.brand, fontSize: 13),
+                  ),
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.black87),
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'copyHtml',
+                child: Text('复制页面源码'),
+              ),
+              const PopupMenuItem(
+                value: 'copyLogs',
+                child: Text('复制网络日志'),
+              ),
+              const PopupMenuItem(
+                value: 'copyCourseJson',
+                child: Text('复制课表JSON'),
+              ),
+            ],
+            onSelected: (value) async {
+              switch (value) {
+                case 'copyHtml':
+                  await _copyPageHtml();
+                case 'copyLogs':
+                  await _copyNetworkLogs();
+                case 'copyCourseJson':
+                  await _copyCourseTableJson();
+              }
+            },
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            InAppWebView(
+              initialUrlRequest: URLRequest(
+                url: WebUri(JwConfig.casLoginUrl),
+              ),
+              initialSettings: InAppWebViewSettings(
+                userAgent: JwConfig.desktopUserAgent,
+                useWideViewPort: true,
+                loadWithOverviewMode: true,
+                supportZoom: true,
+                builtInZoomControls: true,
+                displayZoomControls: false,
+                cacheEnabled: false,
+                clearCache: true,
+                javaScriptEnabled: true,
+                domStorageEnabled: true,
+                databaseEnabled: true,
+                mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
+                allowUniversalAccessFromFileURLs: true,
+                useOnLoadResource: true,
+              ),
+              onWebViewCreated: (controller) {
+                _webViewController = controller;
+                _service = JwWebImportService(controller);
+              },
+              onLoadStart: (controller, url) {
+                setState(() {
+                  _isLoading = true;
+                  _lastError = null;
+                });
+              },
+              onProgressChanged: (controller, progress) {
+                setState(() => _loadProgress = progress);
+              },
+              onLoadStop: (controller, url) async {
+                await _service?.onPageFinished();
+                setState(() {
+                  _isLoading = false;
+                  _lastError = null;
+                });
+              },
+              onReceivedError: (controller, request, error) {
+                debugPrint('WebView error: ${error.description}');
+                setState(() => _lastError = error.description);
+              },
+              onConsoleMessage: (controller, consoleMessage) {
+                debugPrint('WebView console: ${consoleMessage.message}');
+              },
+              onLoadResource: (controller, resource) {
+                _service?.addNetworkLog(
+                  'Resource: ${resource.initiatorType} ${resource.url}',
+                );
+              },
+            ),
+            if (_isLoading)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: LinearProgressIndicator(
+                  value: _loadProgress / 100,
+                  backgroundColor: Colors.grey.shade200,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.brand),
+                ),
+              ),
+            if (_lastError != null && !_isLoading)
+              Positioned(
+                top: 8,
+                left: 16,
+                right: 16,
+                child: Material(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      _lastError!,
+                      style: TextStyle(color: Colors.red.shade700, fontSize: 13),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
-      )
-      ..setUserAgent(
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-        'AppleWebKit/537.36 (KHTML, like Gecko) '
-        'Chrome/120.0.0.0 Safari/537.36',
-      )
-      ..enableZoom(true)
-      ..setBackgroundColor(Colors.white);
-
-      _initWebView();
-  }
-
-  Future<void> _initWebView() async {
-    await _controller.clearCache();
-    await _controller.clearLocalStorage();
-    await _controller.loadRequest(Uri.parse(JwConfig.casLoginUrl));
-  }
-
-  Future<void> _reloadAfterCacheClear() async {
-    try {
-      await _controller.clearCache();
-      await _controller.clearLocalStorage();
-      await _controller.reload();
-    } catch (_) {
-      // ignore
-    }
-  }
-
-  @override
-
-  /// 将桌面版页面的 viewport 调整为桌面宽度，并根据设备宽度动态缩放。
-  Future<void> _fitViewport() async {
-    try {
-      await _controller.runJavaScript(
-        '''
-        (function() {
-          var targetW = 1200;
-          var vw = Math.max(
-            document.documentElement.clientWidth || 1,
-            window.innerWidth || 1
-          );
-          var scale = vw / targetW;
-          var meta = document.querySelector('meta[name=viewport]');
-          if (!meta) {
-            meta = document.createElement('meta');
-            meta.name = 'viewport';
-            document.head.appendChild(meta);
-          }
-          meta.content = 'width=' + targetW + ', initial-scale=' + scale + ', maximum-scale=5, user-scalable=yes';
-        })();
-        ''',
-      );
-    } catch (_) {
-      // ignore
-    }
-  }
-  void dispose() {
-    super.dispose();
-  }
-
-  /// 尝试从页面文本中自动识别学号，例如：`井天林(2024015798)`。
-  Future<void> _autoExtractStudentId() async {
-    try {
-      final result = await _controller.runJavaScriptReturningResult(
-        '''
-        (function() {
-          var text = document.body ? document.body.innerText : '';
-          if (!text) text = document.documentElement ? document.documentElement.innerText : '';
-          var m = text.match(/[（(]\\s*(\\d{10,15})\\s*[)）]/);
-          if (m) return m[1];
-          m = text.match(/\\b\\d{10,15}\\b/);
-          return m ? m[0] : '';
-        })();
-        ''',
-      );
-      if (result is String && result.isNotEmpty) {
-        _studentId = result.replaceAll('"', '').trim();
-      }
-    } catch (_) {
-      // 页面还在加载或跨域时忽略，导入时再重试
-    }
-  }
-
-  Future<String?> _getStudentIdFromPage() async {
-    if (_studentId != null && _studentId!.isNotEmpty) return _studentId;
-    await _autoExtractStudentId();
-    if (_studentId != null && _studentId!.isNotEmpty) return _studentId;
-    return null;
+      ),
+    );
   }
 
   Future<void> _importFromWebView() async {
-    final studentId = await _getStudentIdFromPage();
-    if (studentId == null || studentId.isEmpty) {
-      _showMessage('未能自动识别学号，请确认已打开课表页面后重试');
+    final service = _service;
+    if (service == null) {
+      _showMessage('WebView 未初始化');
       return;
     }
-
     setState(() => _importing = true);
     try {
-      final cookies = await WebViewCookieManager().getCookies(
-        domain: Uri.parse('https://eams.cupk.edu.cn'),
-      );
-      if (cookies.isEmpty) {
-        throw Exception('未获取到教务系统登录状态，请先打开课表页面');
-      }
-
-      final cookieMap = <String, String>{
-        for (final c in cookies) c.name: c.value,
-      };
-      JwApiService.instance.setSessionCookies(cookieMap);
-
-      final courses = await JwApiService.instance.fetchTimetable(
-        studentId: studentId,
-      );
+      final courses = await service.fetchCourses();
       if (!mounted) return;
 
       Navigator.push(
@@ -173,68 +213,54 @@ class _JwWebImportScreenState extends State<JwWebImportScreen> {
     }
   }
 
+  Future<void> _copyPageHtml() async {
+    final service = _service;
+    if (service == null) {
+      _showMessage('WebView 未初始化');
+      return;
+    }
+    final html = await service.fetchPageHtml();
+    if (html == null || html.isEmpty) {
+      _showMessage('未能获取页面源码');
+      return;
+    }
+    await Clipboard.setData(ClipboardData(text: html));
+    _showMessage('页面源码已复制到剪贴板');
+  }
+
+  Future<void> _copyNetworkLogs() async {
+    final service = _service;
+    final text = service?.formatNetworkLogs() ?? '暂无网络日志';
+    await Clipboard.setData(ClipboardData(text: text));
+    _showMessage('网络日志已复制到剪贴板');
+  }
+
+  Future<void> _copyCourseTableJson() async {
+    final service = _service;
+    if (service == null) {
+      _showMessage('WebView 未初始化');
+      return;
+    }
+    setState(() => _importing = true);
+    try {
+      final semesterId = await service.extractSemesterId();
+      if (semesterId == null || semesterId.isEmpty) {
+        _showMessage('未能识别学期 ID，请确认课表页面已加载');
+        return;
+      }
+      final rawJson = await service.fetchPrintDataJson(semesterId);
+      await Clipboard.setData(ClipboardData(text: rawJson));
+      _showMessage('课表 JSON 已复制到剪贴板');
+    } catch (e) {
+      _showMessage('复制课表 JSON 失败：$e');
+    } finally {
+      if (mounted) setState(() => _importing = false);
+    }
+  }
+
   void _showMessage(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg)),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('融合门户导入'),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          TextButton(
-            onPressed: () {
-              _fitViewport();
-              _showMessage('已尝试适配屏幕');
-            },
-            child: const Text(
-              '适应屏幕',
-              style: TextStyle(color: AppTheme.brand, fontSize: 13),
-            ),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '请登录融合门户，并打开教务系统课表页面，然后点击右下角「一键导入」',
-                  style: TextStyle(fontSize: 12, color: Colors.black54),
-                ),
-              ),
-            ),
-            Expanded(
-              child: WebViewWidget(controller: _controller),
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _importing ? null : _importFromWebView,
-        backgroundColor: AppTheme.brand,
-        foregroundColor: Colors.white,
-        icon: _importing
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-            : const Icon(Icons.download),
-        label: const Text('一键导入'),
-      ),
     );
   }
 }

@@ -30,20 +30,43 @@ class _JwImportPreviewScreenState extends State<JwImportPreviewScreen> {
     _removed = [];
   }
 
+  /// 判断两个课程是否在同一周有重叠。
+  bool _haveWeekOverlap(List<int> a, List<int> b) {
+    final setA = a.toSet();
+    return b.any(setA.contains);
+  }
+
   List<List<JwCourse>> _findConflicts() {
     final conflicts = <List<JwCourse>>[];
     for (var i = 0; i < _courses.length; i++) {
       for (var j = i + 1; j < _courses.length; j++) {
         final a = _courses[i];
         final b = _courses[j];
-        if (a.dayOfWeek == b.dayOfWeek &&
-            a.startSection <= b.endSection &&
-            b.startSection <= a.endSection) {
-          conflicts.add([a, b]);
+        // 同一门课的不同时间段不视为冲突。
+        if (a.courseCode.isNotEmpty &&
+            a.courseCode == b.courseCode) {
+          continue;
         }
+        if (a.dayOfWeek != b.dayOfWeek) continue;
+        if (a.startSection > b.endSection ||
+            b.startSection > a.endSection) {
+          continue;
+        }
+        // 只有周次也重叠才算真正冲突。
+        if (!_haveWeekOverlap(a.weeks, b.weeks)) continue;
+        conflicts.add([a, b]);
       }
     }
     return conflicts;
+  }
+
+  /// 按课程代码/名称去重后的课程门数。
+  int _uniqueCourseCount() {
+    final keys = <String>{};
+    for (final c in _courses) {
+      keys.add(c.courseCode.isNotEmpty ? c.courseCode : c.name);
+    }
+    return keys.length;
   }
 
   void _removeCourse(JwCourse course) {
@@ -87,9 +110,9 @@ class _JwImportPreviewScreenState extends State<JwImportPreviewScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: Row(
               children: [
-                _stat('课程数', '${_courses.length}'),
+                _stat('课程门数', '${_uniqueCourseCount()}'),
                 const SizedBox(width: 12),
-                _stat('周次范围', weekText),
+                _stat('上课次数', '${_courses.length}'),
                 const SizedBox(width: 12),
                 _stat('冲突', '${conflicts.length}'),
               ],
@@ -149,7 +172,7 @@ class _JwImportPreviewScreenState extends State<JwImportPreviewScreen> {
               minimumSize: const Size.fromHeight(48),
             ),
             icon: const Icon(Icons.check),
-            label: Text('确认导入（${_courses.length} 门）'),
+            label: Text('确认导入（${_uniqueCourseCount()} 门，${_courses.length} 次）'),
           ),
         ),
       ),

@@ -43,7 +43,7 @@ dependencies:
   xml: ^6.5.0
   # 持久化课程数据
   shared_preferences: ^2.2.0
-  webview_flutter: ^4.10.0
+  flutter_inappwebview: ^6.0.0
 
 dev_dependencies:
   flutter_test:
@@ -96,4 +96,9 @@ flutter:
   #         weight: 700
   #
   # For details regarding fonts from package dependencies,
-  # see https://flutter.dev/to/font-from-package
+  # see https://flutter.dev/to/asset-from-package
+
+dependency_overrides:
+  # 覆盖 Android 插件以修复 release 构建时 proguard-android.txt 被弃用的问题。
+  flutter_inappwebview_android:
+    path: ./plugins/flutter_inappwebview_android
