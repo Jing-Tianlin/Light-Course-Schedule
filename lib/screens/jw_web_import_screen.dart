@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 import '../config/jw_config.dart';
 import '../services/jw_api_service.dart';
@@ -40,14 +41,21 @@ class _JwWebImportScreenState extends State<JwWebImportScreen> {
           },
         ),
       )
-      ..setUserAgent(
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-        'AppleWebKit/537.36 (KHTML, like Gecko) '
-        'Chrome/120.0.0.0 Safari/537.36',
-      )
       ..enableZoom(true)
-      ..setBackgroundColor(Colors.white)
-      ..loadRequest(Uri.parse(JwConfig.casLoginUrl));
+      ..setBackgroundColor(Colors.white);
+
+    final platform = _controller.platform;
+    if (platform is AndroidWebViewController) {
+      platform
+        ..setUserAgent(
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+          'AppleWebKit/537.36 (KHTML, like Gecko) '
+          'Chrome/120.0.0.0 Safari/537.36',
+        )
+        ..setUseWideViewPort(true);
+    }
+
+    _controller.loadRequest(Uri.parse(JwConfig.casLoginUrl));
   }
 
   @override
