@@ -11,7 +11,7 @@ import 'jw_import_preview_screen.dart';
 /// 流程：
 /// 1. 打开 CAS 统一登录页，用户手动输入账号/密码/验证码；
 /// 2. 登录后进入融合门户，再手动点开教务系统课表页面；
-/// 3. 点击「一键导入」，App 从 WebView 中读取 EAMS 会话 Cookie 并抓取课表。
+/// 3. 点击「一键导入」，App 自动从页面识别学号、读取 EAMS Cookie 并抓取课表。
 class JwWebImportScreen extends StatefulWidget {
   const JwWebImportScreen({super.key});
 
@@ -20,9 +20,9 @@ class JwWebImportScreen extends StatefulWidget {
 }
 
 class _JwWebImportScreenState extends State<JwWebImportScreen> {
-  final _studentIdController = TextEditingController();
   late final WebViewController _controller;
   bool _importing = false;
+  String? _studentId;
 
   @override
   void initState() {
@@ -31,6 +31,10 @@ class _JwWebImportScreenState extends State<JwWebImportScreen> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
+          onPageFinished: (_) {
+            _fitViewport();
+            _autoExtractStudentId();
+          },
           onWebResourceError: (error) {
             debugPrint('WebView error: ${error.description}');
           },
@@ -47,15 +51,64 @@ class _JwWebImportScreenState extends State<JwWebImportScreen> {
   }
 
   @override
+
+  /// 将桌面版页面的 viewport 调整为桌面宽度并缩小到手机屏幕可视范围。
+  Future<void> _fitViewport() async {
+    try {
+      await _controller.runJavaScript(
+        '''
+        (function() {
+          var meta = document.querySelector('meta[name=viewport]');
+          if (!meta) {
+            meta = document.createElement('meta');
+            meta.name = 'viewport';
+            document.head.appendChild(meta);
+          }
+          meta.content = 'width=1200, initial-scale=0.3, maximum-scale=5, user-scalable=yes';
+        })();
+        ''',
+      );
+    } catch (_) {
+      // ignore
+    }
+  }
   void dispose() {
-    _studentIdController.dispose();
     super.dispose();
   }
 
+  /// 尝试从页面文本中自动识别学号，例如：`井天林(2024015798)`。
+  Future<void> _autoExtractStudentId() async {
+    try {
+      final result = await _controller.runJavaScriptReturningResult(
+        '''
+        (function() {
+          var text = document.body ? document.body.innerText : '';
+          var m = text.match(/[（(](\\d{10,15})[)）]/);
+          if (m) return m[1];
+          m = text.match(/\\b\\d{10,15}\\b/);
+          return m ? m[1] : '';
+        })();
+        ''',
+      );
+      if (result is String && result.isNotEmpty) {
+        _studentId = result.replaceAll('"', '').trim();
+      }
+    } catch (_) {
+      // 页面还在加载或跨域时忽略，导入时再重试
+    }
+  }
+
+  Future<String?> _getStudentIdFromPage() async {
+    if (_studentId != null && _studentId!.isNotEmpty) return _studentId;
+    await _autoExtractStudentId();
+    if (_studentId != null && _studentId!.isNotEmpty) return _studentId;
+    return null;
+  }
+
   Future<void> _importFromWebView() async {
-    final studentId = _studentIdController.text.trim();
-    if (studentId.isEmpty) {
-      _showMessage('请先填写学号');
+    final studentId = await _getStudentIdFromPage();
+    if (studentId == null || studentId.isEmpty) {
+      _showMessage('未能自动识别学号，请确认已打开课表页面后重试');
       return;
     }
 
@@ -113,59 +166,37 @@ class _JwWebImportScreenState extends State<JwWebImportScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _studentIdController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: '学号',
-                        hintText: '用于抓取课表',
-                        isDense: true,
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    onPressed: _importing ? null : _importFromWebView,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppTheme.brand,
-                    ),
-                    icon: _importing
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.download),
-                    label: const Text('一键导入'),
-                  ),
-                ],
-              ),
-            ),
             const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  '请在下方登录融合门户，并手动打开教务系统课表页面',
+                  '请登录融合门户，并打开教务系统课表页面，然后点击右下角「一键导入」',
                   style: TextStyle(fontSize: 12, color: Colors.black54),
                 ),
               ),
             ),
-            const SizedBox(height: 4),
             Expanded(
               child: WebViewWidget(controller: _controller),
             ),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _importing ? null : _importFromWebView,
+        backgroundColor: AppTheme.brand,
+        foregroundColor: Colors.white,
+        icon: _importing
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(Icons.download),
+        label: const Text('一键导入'),
       ),
     );
   }
