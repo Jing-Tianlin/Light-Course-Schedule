@@ -13,8 +13,6 @@ void main() {
     expect(find.byIcon(Icons.calendar_today), findsOneWidget);
     expect(find.byIcon(Icons.upload_file_outlined), findsOneWidget);
     expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
-    expect(find.text('课表'), findsOneWidget);
-    expect(find.text('导入'), findsOneWidget);
-    expect(find.text('设置'), findsOneWidget);
+
   });
 }

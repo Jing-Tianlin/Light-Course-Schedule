@@ -50,28 +50,35 @@ class _RootTabsState extends State<RootTabs> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: IndexedStack(index: _index, children: _pages),
-      bottomNavigationBar: NavigationBar(
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        indicatorColor: AppTheme.brand.withValues(alpha: 0.12),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.calendar_today_outlined),
-            selectedIcon: Icon(Icons.calendar_today, color: AppTheme.brand),
-            label: '课表',
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: NavigationBar(
+            height: 56,
+            labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
+            selectedIndex: _index,
+            onDestinationSelected: (i) => setState(() => _index = i),
+            indicatorColor: AppTheme.brand.withValues(alpha: 0.12),
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.calendar_today_outlined),
+                selectedIcon: Icon(Icons.calendar_today, color: AppTheme.brand),
+                label: '课表',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.upload_file_outlined),
+                selectedIcon: Icon(Icons.upload_file, color: AppTheme.brand),
+                label: '导入',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.settings_outlined),
+                selectedIcon: Icon(Icons.settings, color: AppTheme.brand),
+                label: '设置',
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.upload_file_outlined),
-            selectedIcon: Icon(Icons.upload_file, color: AppTheme.brand),
-            label: '导入',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings, color: AppTheme.brand),
-            label: '设置',
-          ),
-        ],
+        ),
       ),
     );
   }
