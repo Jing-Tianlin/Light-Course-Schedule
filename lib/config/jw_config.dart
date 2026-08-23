@@ -12,6 +12,8 @@ class JwConfig {
   static const String baseUrl = 'https://eams.cupk.edu.cn';
   static const String portalBaseUrl = 'https://portal.cupk.edu.cn';
   static const String portalLoginPath = '/portal/r/w?cmd=CLIENT_USER_HOME';
+  static const String casLoginUrl =
+      'https://cas.cupk.edu.cn/cas/login?service=https%3A%2F%2Fportal.cupk.edu.cn%2Fportal%2Findex_sso.jsp';
 
   /// 是否优先使用强智 JSON API 模式。
   /// 如果学校关闭了 app.do 接口，可改为 false 走传统表单模拟登录。

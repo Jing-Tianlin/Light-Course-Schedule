@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import '../data/kebiao_data.dart';
 import '../services/docx_parser.dart';
 import '../utils/app_theme.dart';
-import 'jw_login_screen.dart';
+import 'jw_web_import_screen.dart';
 
 /// 导入页：选择 Word(.docx) 并解析入库
 class ImportScreen extends StatefulWidget {
@@ -73,7 +73,7 @@ class _ImportScreenState extends State<ImportScreen> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const JwLoginScreen()),
+                      MaterialPageRoute(builder: (_) => const JwWebImportScreen()),
                     );
                   },
                   style: OutlinedButton.styleFrom(

@@ -240,6 +240,13 @@ class JwApiService {
     return <String, dynamic>{};
   }
 
+  /// 从 WebView 中导入已登录的会话 Cookie。
+  void setSessionCookies(Map<String, String> cookies) {
+    _cookies
+      ..clear()
+      ..addAll(cookies);
+  }
+
   void _applyCookies(HttpClientRequest request) {
     if (_cookies.isNotEmpty) {
       request.headers.set(
