@@ -52,19 +52,25 @@ class _JwWebImportScreenState extends State<JwWebImportScreen> {
 
   @override
 
-  /// 将桌面版页面的 viewport 调整为桌面宽度并缩小到手机屏幕可视范围。
+  /// 将桌面版页面的 viewport 调整为桌面宽度，并根据设备宽度动态缩放。
   Future<void> _fitViewport() async {
     try {
       await _controller.runJavaScript(
         '''
         (function() {
+          var targetW = 1200;
+          var vw = Math.max(
+            document.documentElement.clientWidth || 1,
+            window.innerWidth || 1
+          );
+          var scale = vw / targetW;
           var meta = document.querySelector('meta[name=viewport]');
           if (!meta) {
             meta = document.createElement('meta');
             meta.name = 'viewport';
             document.head.appendChild(meta);
           }
-          meta.content = 'width=1200, initial-scale=0.3, maximum-scale=5, user-scalable=yes';
+          meta.content = 'width=' + targetW + ', initial-scale=' + scale + ', maximum-scale=5, user-scalable=yes';
         })();
         ''',
       );
@@ -162,6 +168,18 @@ class _JwWebImportScreenState extends State<JwWebImportScreen> {
         title: const Text('融合门户导入'),
         backgroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          TextButton(
+            onPressed: () {
+              _fitViewport();
+              _showMessage('已尝试适配屏幕');
+            },
+            child: const Text(
+              '适应屏幕',
+              style: TextStyle(color: AppTheme.brand, fontSize: 13),
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Column(
