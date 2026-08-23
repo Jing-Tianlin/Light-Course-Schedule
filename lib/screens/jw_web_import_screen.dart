@@ -37,6 +37,7 @@ class _JwWebImportScreenState extends State<JwWebImportScreen> {
           },
           onWebResourceError: (error) {
             debugPrint('WebView error: ${error.description}');
+              _reloadAfterCacheClear();
           },
         ),
       )
@@ -46,8 +47,25 @@ class _JwWebImportScreenState extends State<JwWebImportScreen> {
         'Chrome/120.0.0.0 Safari/537.36',
       )
       ..enableZoom(true)
-      ..setBackgroundColor(Colors.white)
-      ..loadRequest(Uri.parse(JwConfig.casLoginUrl));
+      ..setBackgroundColor(Colors.white);
+
+      _initWebView();
+  }
+
+  Future<void> _initWebView() async {
+    await _controller.clearCache();
+    await _controller.clearLocalStorage();
+    await _controller.loadRequest(Uri.parse(JwConfig.casLoginUrl));
+  }
+
+  Future<void> _reloadAfterCacheClear() async {
+    try {
+      await _controller.clearCache();
+      await _controller.clearLocalStorage();
+      await _controller.reload();
+    } catch (_) {
+      // ignore
+    }
   }
 
   @override
