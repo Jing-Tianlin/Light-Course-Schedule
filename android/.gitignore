@@ -1,5 +1,6 @@
 gradle-wrapper.jar
 /.gradle
+/.kotlin/
 /build/
 /build_log.txt
 /captures/
