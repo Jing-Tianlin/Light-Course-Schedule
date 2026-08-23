@@ -55,7 +55,7 @@ class _JwWebImportScreenState extends State<JwWebImportScreen> {
     setState(() => _importing = true);
     try {
       final cookies = await WebViewCookieManager().getCookies(
-        'https://eams.cupk.edu.cn',
+        domain: Uri.parse('https://eams.cupk.edu.cn'),
       );
       if (cookies.isEmpty) {
         throw Exception('未获取到教务系统登录状态，请先打开课表页面');
