@@ -7,9 +7,9 @@ class JwConfig {
 
   /// 新教务系统基础地址。
   ///
-  /// TODO: 需要通过抓包确认新系统实际域名/路径。
-  /// 旧系统为 http://jw.cupk.edu.cn/jsxsd/，新系统可能是同域新路径或新子域。
-  static const String baseUrl = 'https://jw.cupk.edu.cn';
+  /// 中石大克校区新教务系统（EAMS）。
+  /// 
+  static const String baseUrl = 'https://eams.cupk.edu.cn';
 
   /// 是否优先使用强智 JSON API 模式。
   /// 如果学校关闭了 app.do 接口，可改为 false 走传统表单模拟登录。
