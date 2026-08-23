@@ -97,10 +97,11 @@ class _JwWebImportScreenState extends State<JwWebImportScreen> {
         '''
         (function() {
           var text = document.body ? document.body.innerText : '';
-          var m = text.match(/[（(](\\d{10,15})[)）]/);
+          if (!text) text = document.documentElement ? document.documentElement.innerText : '';
+          var m = text.match(/[（(]\\s*(\\d{10,15})\\s*[)）]/);
           if (m) return m[1];
           m = text.match(/\\b\\d{10,15}\\b/);
-          return m ? m[1] : '';
+          return m ? m[0] : '';
         })();
         ''',
       );
