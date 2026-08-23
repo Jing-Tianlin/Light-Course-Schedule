@@ -48,6 +48,7 @@ class _RootTabsState extends State<RootTabs> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       backgroundColor: Colors.white,
       body: IndexedStack(index: _index, children: _pages),
       bottomNavigationBar: Padding(
