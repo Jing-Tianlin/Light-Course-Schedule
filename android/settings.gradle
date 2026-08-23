@@ -1,6 +1,6 @@
 pluginManagement {
     def properties = new Properties()
-    def localProperties = new File("local.properties")
+    def localProperties = file("local.properties")
     if (localProperties.exists()) {
         localProperties.withInputStream { properties.load(it) }
     }
