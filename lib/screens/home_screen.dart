@@ -75,7 +75,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool _isCurrentRealWeek() {
     final raw = ScheduleUtils.computeRawWeek(
-        DateTime.now(), KebiaoData.instance.termStart);
+      DateTime.now(),
+      KebiaoData.instance.termStart,
+    );
     return _week == raw;
   }
 
@@ -95,14 +97,23 @@ class _HomeScreenState extends State<HomeScreen> {
               child: _notStarted
                   ? _buildNotStarted(context)
                   : _semesterEnded
-                      ? _buildSemesterEnded(context)
-                      : WeekScheduleView(
-                          key: ValueKey(
-                            '$_week-${_weekStart.millisecondsSinceEpoch}'),
-                          week: _week,
-                          weekDays: ScheduleUtils.daysOfWeek(_weekStart),
-                          onRefresh: () {},
+                  ? _buildSemesterEnded(context)
+                  : GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onHorizontalDragEnd: (details) {
+                        final v = details.primaryVelocity ?? 0;
+                        if (v < -200) _changeWeek(1);
+                        if (v > 200) _changeWeek(-1);
+                      },
+                      child: WeekScheduleView(
+                        key: ValueKey(
+                          '$_week-${_weekStart.millisecondsSinceEpoch}',
                         ),
+                        week: _week,
+                        weekDays: ScheduleUtils.daysOfWeek(_weekStart),
+                        onRefresh: () {},
+                      ),
+                    ),
             ),
           ],
         ),
@@ -118,8 +129,10 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           const Text('⏳', style: TextStyle(fontSize: 52)),
           const SizedBox(height: 16),
-          const Text('本学期尚未开始',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+          const Text(
+            '本学期尚未开始',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 8),
           Text(
             '开学后会按当前日期自动定位到对应周次',
@@ -135,10 +148,10 @@ class _HomeScreenState extends State<HomeScreen> {
             style: OutlinedButton.styleFrom(
               foregroundColor: AppTheme.brand,
               side: const BorderSide(color: AppTheme.brand),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24)),
+                borderRadius: BorderRadius.circular(24),
+              ),
             ),
           ),
         ],
@@ -155,8 +168,10 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           const Text('🎉', style: TextStyle(fontSize: 52)),
           const SizedBox(height: 16),
-          const Text('本学期已结束',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+          const Text(
+            '本学期已结束',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 8),
           Text(
             '当前日期已超过第 $maxWeek 周，可查看最后一周课表',
@@ -176,10 +191,10 @@ class _HomeScreenState extends State<HomeScreen> {
             style: OutlinedButton.styleFrom(
               foregroundColor: AppTheme.brand,
               side: const BorderSide(color: AppTheme.brand),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24)),
+                borderRadius: BorderRadius.circular(24),
+              ),
             ),
           ),
         ],
@@ -209,13 +224,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                         '第 $_week 周',
                         style: const TextStyle(
-                            fontSize: 17, fontWeight: FontWeight.w800),
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                       if (isReal) ...[
                         const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: AppTheme.brand.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
@@ -223,9 +242,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: const Text(
                             '本周',
                             style: TextStyle(
-                                fontSize: 10,
-                                color: AppTheme.brand,
-                                fontWeight: FontWeight.w600),
+                              fontSize: 10,
+                              color: AppTheme.brand,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
@@ -234,8 +254,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 1),
                   Text(
                     '$range · 共 $maxWeek 周',
-                    style:
-                        TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                   ),
                 ],
               ),
@@ -275,7 +294,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final hostContext = context;
     // 当前真实周（学期未开始时为 <1）
     final raw = ScheduleUtils.computeRawWeek(
-        DateTime.now(), KebiaoData.instance.termStart);
+      DateTime.now(),
+      KebiaoData.instance.termStart,
+    );
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -294,9 +315,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('选择周次',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w700)),
+                    const Text(
+                      '选择周次',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     TextButton.icon(
                       onPressed: () {
                         Navigator.pop(context);
@@ -320,25 +345,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: List.generate(
-                    maxWeek,
-                    (i) {
-                      final w = i + 1;
-                      final sel = w == _week;
-                      return ChoiceChip(
-                        label: Text('第 $w 周'),
-                        selected: sel,
-                        selectedColor: AppTheme.brand,
-                        labelStyle: TextStyle(
-                          color: sel ? Colors.white : Colors.grey.shade800,
-                        ),
-                        onSelected: (_) {
-                          Navigator.pop(context);
-                          _switchToWeek(w);
-                        },
-                      );
-                    },
-                  ),
+                  children: List.generate(maxWeek, (i) {
+                    final w = i + 1;
+                    final sel = w == _week;
+                    return ChoiceChip(
+                      label: Text('第 $w 周'),
+                      selected: sel,
+                      selectedColor: AppTheme.brand,
+                      labelStyle: TextStyle(
+                        color: sel ? Colors.white : Colors.grey.shade800,
+                      ),
+                      onSelected: (_) {
+                        Navigator.pop(context);
+                        _switchToWeek(w);
+                      },
+                    );
+                  }),
                 ),
               ],
             ),
