@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../data/kebiao_data.dart';
 import '../services/docx_parser.dart';
 import '../utils/app_theme.dart';
+import 'jw_login_screen.dart';
 
 /// 导入页：选择 Word(.docx) 并解析入库
 class ImportScreen extends StatefulWidget {
@@ -67,6 +68,22 @@ class _ImportScreenState extends State<ImportScreen> {
                     : const Icon(Icons.upload_file),
                 label: Text(_count == null ? '选择 Word 文件' : '重新导入'),
               ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const JwLoginScreen()),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.brand,
+                    side: const BorderSide(color: AppTheme.brand),
+                    minimumSize: const Size(220, 48),
+                  ),
+                  icon: const Icon(Icons.school_outlined),
+                  label: const Text('从教务系统导入'),
+                ),
             ],
           ),
         ),
