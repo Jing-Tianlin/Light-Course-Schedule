@@ -49,6 +49,45 @@ class JwApiService {
     return token;
   }
 
+  /// 融合门户统一登录 + 跳转 EAMS。
+  ///
+  /// 流程：
+  /// 1. 访问融合门户首页，获取初始 Cookie；
+  /// 2. 提交门户账号密码（实际提交地址需按学校页面调整）；
+  /// 3. 访问 EAMS 首页触发 SSO，建立 EAMS 会话。
+  Future<String> loginWithPortal({
+    required String username,
+    required String password,
+  }) async {
+    // 1. 获取门户首页 Cookie
+    await _getBytesWithBase(JwConfig.portalBaseUrl, JwConfig.portalLoginPath);
+
+    // 2. 提交门户登录（实际字段/地址需要根据门户页面调整）
+    final portalUri = Uri.parse('${JwConfig.portalBaseUrl}${JwConfig.portalLoginPath}');
+    final request = await _client.postUrl(portalUri);
+    _applyCookies(request);
+    request.headers.set(HttpHeaders.contentTypeHeader, 'application/x-www-form-urlencoded');
+    final body = {
+      'username': username,
+      'password': password,
+    };
+    request.write(body.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&'));
+    final portalResp = await request.close();
+    _saveCookies(portalResp);
+    if (portalResp.statusCode >= 400) {
+      throw const JwException('融合门户登录失败');
+    }
+
+    // 3. 访问 EAMS 首页，触发 SSO 并建立教务会话
+    final eamsHome = await _getBytesWithBase(JwConfig.baseUrl, '/student/home');
+    if (eamsHome.isEmpty) {
+      throw const JwException('教务系统会话建立失败');
+    }
+
+    // 返回 EAMS Cookie 作为会话凭证
+    return _cookies.entries.map((e) => '${e.key}=${e.value}').join('; ');
+  }
+
   /// 获取当前学年学期信息。
   Future<Map<String, dynamic>> fetchCurrentTime({DateTime? date}) async {
     return _getJson(
@@ -59,7 +98,7 @@ class JwApiService {
 
   /// 获取课表。
   Future<List<JwCourse>> fetchTimetable({
-    required String token,
+    String? token,
     required String studentId,
     String? semester,
     int? week,
@@ -71,7 +110,7 @@ class JwApiService {
         if (semester != null && semester.isNotEmpty) 'xnxqid': semester,
         if (week != null) 'zc': week.toString(),
       },
-      headers: {'token': token},
+      headers: token == null || token.isEmpty ? null : {'token': token},
     );
     final list = data['kbList'] ??
         data['data'] ??
@@ -160,6 +199,22 @@ class JwApiService {
 
   Future<Uint8List> _getBytes(String path) async {
     final uri = Uri.parse('${JwConfig.baseUrl}$path');
+    final request = await _client.getUrl(uri);
+    _applyCookies(request);
+    final response = await request.close();
+    _saveCookies(response);
+    if (response.statusCode != 200) {
+      throw JwException('请求失败：HTTP ${response.statusCode}');
+    }
+    final bytes = await response.fold<BytesBuilder>(
+      BytesBuilder(),
+      (builder, chunk) => builder..add(chunk),
+    );
+    return bytes.takeBytes();
+  }
+
+  Future<Uint8List> _getBytesWithBase(String baseUrl, String path) async {
+    final uri = Uri.parse('$baseUrl$path');
     final request = await _client.getUrl(uri);
     _applyCookies(request);
     final response = await request.close();

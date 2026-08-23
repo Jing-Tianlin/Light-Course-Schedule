@@ -21,6 +21,7 @@ class _JwLoginScreenState extends State<JwLoginScreen> {
   final _captchaController = TextEditingController();
 
   bool _loading = false;
+  bool _portalMode = true;
   bool _formMode = false;
   Uint8List? _captchaBytes;
   String? _errorText;
@@ -63,7 +64,12 @@ class _JwLoginScreenState extends State<JwLoginScreen> {
 
     try {
       String token;
-      if (_formMode) {
+      if (_portalMode) {
+        token = await JwApiService.instance.loginWithPortal(
+          username: username,
+          password: password,
+        );
+      } else if (_formMode) {
         token = await JwApiService.instance.loginWithForm(
           username: username,
           password: password,
@@ -154,6 +160,21 @@ class _JwLoginScreenState extends State<JwLoginScreen> {
                 prefixIcon: Icon(Icons.lock_outline),
               ),
             ),
+              Row(
+                children: [
+                  const Text('使用融合门户登录'),
+                  Switch(
+                    value: _portalMode,
+                    onChanged: (v) {
+                      setState(() {
+                        _portalMode = v;
+                        _errorText = null;
+                        if (!v && _formMode) _loadCaptcha();
+                      });
+                    },
+                  ),
+                ],
+              ),
             const SizedBox(height: 8),
             Row(
               children: [
